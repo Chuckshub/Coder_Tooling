@@ -2,23 +2,5 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "env": {
-    "RAMP_CLIENT_ID": {
-      "description": "Ramp API Client ID from https://app.ramp.com/developer",
-      "required": true
-    },
-    "RAMP_CLIENT_SECRET": {
-      "description": "Ramp API Client Secret from https://app.ramp.com/developer",
-      "required": true
-    },
-    "RAMP_TOKEN_URL": {
-      "description": "Ramp OAuth token endpoint",
-      "value": "https://api.ramp.com/v1/public/customer/token"
-    },
-    "RAMP_API_BASE": {
-      "description": "Ramp API base URL",
-      "value": "https://api.ramp.com"
-    }
-  }
+  "framework": "nextjs"
 }
