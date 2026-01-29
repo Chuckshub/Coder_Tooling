@@ -37,15 +37,20 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ```
 
-## Step 3: Ramp API Setup (2 minutes)
+## Step 3: Ramp OAuth Setup (5 minutes)
 
 1. Log into [Ramp](https://app.ramp.com/)
 2. Go to Settings → Developer
-3. Generate API Key
-4. Add to `.env.local`:
+3. Click "Create App"
+4. Name: "Tooling Spend Tracker"
+5. Grant Type: "Client Credentials"
+6. Scopes: `transactions:read`
+7. Copy Client ID and Client Secret
+8. Add to `.env.local`:
 
 ```bash
-RAMP_API_KEY=your_ramp_api_key
+RAMP_CLIENT_ID=your_client_id
+RAMP_CLIENT_SECRET=your_client_secret
 ```
 
 ## Step 4: Start Development Server (1 minute)

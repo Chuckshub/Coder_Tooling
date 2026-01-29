@@ -6,34 +6,54 @@ This guide explains how to obtain and configure your Ramp API credentials for th
 
 ### Prerequisites
 - You must be a Ramp customer
-- You need admin or developer access to your Ramp account
+- You need **Admin** or **Business Owner** access to your Ramp account
+- Ramp uses OAuth 2.0 for API authentication
 
-### Obtaining API Key
+### Creating a Developer App
 
 1. Log into your [Ramp dashboard](https://app.ramp.com/)
 2. Navigate to **Settings** → **Developer**
-3. Click **"Generate API Key"** or **"Create Token"**
-4. Give your token a descriptive name (e.g., "Tooling Spend Tracker")
-5. Select appropriate scopes/permissions:
-   - ✅ Read transactions
-   - ✅ Read card details
+3. Click **"Create App"** or **"New Application"**
+4. Fill in app details:
+   - **Name**: "Tooling Spend Tracker"
+   - **Description**: "Internal tool for tracking software spend"
+5. Under **Grant Types**, click **"Add new grant type"**
+6. Select **"Client Credentials"** (for server-to-server communication)
+7. Under **Scopes**, click **"Configure allowed scopes"** and select:
+   - ✅ `transactions:read` (required)
+   - ✅ `business:read` (optional, for business info)
    - ❌ Write permissions (not needed)
-6. Copy the API key immediately (you won't be able to see it again)
+8. Click **"Create"** or **"Save"**
+
+### Getting Your Credentials
+
+After creating the app, you'll receive:
+- **Client ID**: Used to identify your application
+- **Client Secret**: Used to authenticate (shown only once!)
+
+⚠️ **IMPORTANT**: Copy both values immediately. The client secret cannot be retrieved later.
 
 ### Important Security Notes
 
-⚠️ **Never commit your API key to version control**
+⚠️ **Never commit credentials to version control**
 - Always use environment variables
 - Add `.env.local` to your `.gitignore`
-- Rotate keys if exposed
+- Rotate credentials if exposed
+- Client secrets have the same sensitivity as passwords
 
-## 2. Configure Environment Variable
+## 2. Configure Environment Variables
 
-Add your Ramp API key to `.env.local`:
+Add your Ramp OAuth credentials to `.env.local`:
 
 ```bash
-RAMP_API_KEY=your_ramp_api_key_here
+RAMP_CLIENT_ID=your_client_id_here
+RAMP_CLIENT_SECRET=your_client_secret_here
 ```
+
+The application will automatically:
+1. Request an access token using these credentials
+2. Cache the token (valid for 10 days)
+3. Automatically refresh when needed
 
 ## 3. Verify API Access
 
@@ -123,9 +143,10 @@ The app handles common errors:
 ## 7. Troubleshooting
 
 ### "Authentication failed" error
-- Verify API key is correct
-- Check key hasn't been revoked in Ramp dashboard
+- Verify Client ID and Client Secret are correct
+- Check app hasn't been deleted/disabled in Ramp dashboard
 - Ensure no extra spaces in `.env.local`
+- Verify the `transactions:read` scope is enabled for your app
 
 ### "Rate limit exceeded" error
 - Wait a few minutes before retrying

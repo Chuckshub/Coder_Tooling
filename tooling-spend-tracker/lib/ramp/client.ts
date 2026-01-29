@@ -1,19 +1,88 @@
 import axios, { AxiosInstance } from 'axios';
 import { RampTransaction, RampApiResponse } from '@/types';
 
-const RAMP_API_BASE_URL = 'https://api.ramp.com/v1';
+const RAMP_API_BASE_URL = 'https://api.ramp.com/developer/v1';
+const RAMP_TOKEN_URL = 'https://api.ramp.com/developer/v1/token';
+
+interface RampTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+}
 
 export class RampClient {
   private client: AxiosInstance;
+  private clientId: string;
+  private clientSecret: string;
+  private accessToken?: string;
+  private tokenExpiry?: Date;
 
-  constructor(apiKey: string) {
+  constructor(clientId: string, clientSecret: string) {
+    this.clientId = clientId;
+    this.clientSecret = clientSecret;
+    
     this.client = axios.create({
       baseURL: RAMP_API_BASE_URL,
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
     });
+  }
+
+  /**
+   * Get a valid access token, refreshing if necessary
+   */
+  private async getAccessToken(): Promise<string> {
+    // Check if we have a valid token
+    if (this.accessToken && this.tokenExpiry && new Date() < this.tokenExpiry) {
+      return this.accessToken;
+    }
+
+    // Request new token using client credentials flow
+    try {
+      const response = await axios.post<RampTokenResponse>(
+        RAMP_TOKEN_URL,
+        new URLSearchParams({
+          grant_type: 'client_credentials',
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          scope: 'transactions:read', // Add more scopes as needed
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+          },
+        }
+      );
+
+      this.accessToken = response.data.access_token;
+      // Set expiry to 1 day before actual expiry for safety (tokens last 10 days)
+      this.tokenExpiry = new Date(Date.now() + (response.data.expires_in - 86400) * 1000);
+
+      return this.accessToken;
+    } catch (error) {
+      console.error('Error fetching Ramp access token:', error);
+      throw new Error('Failed to authenticate with Ramp API');
+    }
+  }
+
+  /**
+   * Make an authenticated request to the Ramp API
+   */
+  private async authenticatedRequest<T>(config: any): Promise<T> {
+    const token = await this.getAccessToken();
+    
+    const response = await this.client.request<T>({
+      ...config,
+      headers: {
+        ...config.headers,
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
   }
 
   /**
@@ -33,16 +102,21 @@ export class RampClient {
       let nextCursor: string | undefined;
 
       do {
-        const response = await this.client.get<RampApiResponse<RampTransaction>>('/transactions', {
+        const response = await this.authenticatedRequest<RampApiResponse<RampTransaction>>({
+          method: 'GET',
+          url: '/transactions',
           params: {
-            ...params,
+            from_date: params.start,
+            to_date: params.end,
+            merchant_name: params.merchantName,
+            state: params.state,
             page_cursor: nextCursor,
             page_size: params.limit || 100,
           },
         });
 
-        allTransactions.push(...response.data.data);
-        nextCursor = response.data.page.next;
+        allTransactions.push(...response.data);
+        nextCursor = response.page.next;
 
         // If a specific limit was requested and we've reached it, break
         if (params.limit && allTransactions.length >= params.limit) {
@@ -114,7 +188,11 @@ export class RampClient {
    */
   async testConnection(): Promise<boolean> {
     try {
-      await this.client.get('/transactions', { params: { page_size: 1 } });
+      await this.authenticatedRequest({
+        method: 'GET',
+        url: '/transactions',
+        params: { page_size: 1 },
+      });
       return true;
     } catch (error) {
       console.error('Ramp API connection test failed:', error);
@@ -150,15 +228,17 @@ export class RampClient {
 
 /**
  * Create a Ramp client instance
- * @param apiKey - Ramp API key (optional, defaults to environment variable)
+ * @param clientId - Ramp client ID (optional, defaults to environment variable)
+ * @param clientSecret - Ramp client secret (optional, defaults to environment variable)
  * @returns RampClient instance
  */
-export const createRampClient = (apiKey?: string): RampClient => {
-  const key = apiKey || process.env.RAMP_API_KEY;
+export const createRampClient = (clientId?: string, clientSecret?: string): RampClient => {
+  const id = clientId || process.env.RAMP_CLIENT_ID;
+  const secret = clientSecret || process.env.RAMP_CLIENT_SECRET;
   
-  if (!key) {
-    throw new Error('Ramp API key is required. Set RAMP_API_KEY environment variable.');
+  if (!id || !secret) {
+    throw new Error('Ramp client ID and secret are required. Set RAMP_CLIENT_ID and RAMP_CLIENT_SECRET environment variables.');
   }
 
-  return new RampClient(key);
+  return new RampClient(id, secret);
 };

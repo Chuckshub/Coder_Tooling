@@ -59,7 +59,8 @@ Required environment variables:
 - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
 - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
 - `NEXT_PUBLIC_FIREBASE_APP_ID`
-- `RAMP_API_KEY`
+- `RAMP_CLIENT_ID` (OAuth 2.0 Client ID)
+- `RAMP_CLIENT_SECRET` (OAuth 2.0 Client Secret)
 
 3. Configure Firebase:
 
@@ -220,9 +221,10 @@ See [docs/FIRESTORE_RULES.md](./docs/FIRESTORE_RULES.md) for recommended securit
 ## Troubleshooting
 
 ### Transactions not syncing
-- Verify RAMP_API_KEY is correct
+- Verify RAMP_CLIENT_ID and RAMP_CLIENT_SECRET are correct
 - Check Ramp API rate limits
 - Review API error logs
+- Ensure `transactions:read` scope is enabled in your Ramp app
 
 ### Vendor matching not working
 - Add alternative names to vendor
