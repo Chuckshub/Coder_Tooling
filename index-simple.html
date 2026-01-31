@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ramp API - Simple Token Access</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    
+    function RampConnector() {
+      const [token, setToken] = useState(null);
+      const [error, setError] = useState(null);
+      const [loading, setLoading] = useState(false);
+      
+      // Check for existing token on mount
+      useEffect(() => {
+        const storedToken = localStorage.getItem('ramp_access_token');
+        if (storedToken) {
+          setToken(storedToken);
+        }
+      }, []);
+      
+      // Get token using Client Credentials flow
+      const handleGetToken = async () => {
+        setLoading(true);
+        setError(null);
+        
+        try {
+          const response = await fetch('/api/auth/client-credentials', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+          }
+          
+          setToken(data.access_token);
+          localStorage.setItem('ramp_access_token', data.access_token);
+          
+          console.log('Token received:', data);
+          
+        } catch (err) {
+          console.error('Token request error:', err);
+          setError(`Failed to get token: ${err.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      // Test the token
+      const testToken = async () => {
+        if (!token) return;
+        
+        setLoading(true);
+        setError(null);
+        
+        try {
+          const response = await fetch('https://api.ramp.com/developer/v1/business', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            },
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API call failed: ${response.status} - ${errorText}`);
+          }
+          
+          const data = await response.json();
+          alert('✓ Token works!\n\nBusiness: ' + (data.business_name_legal || data.business_name_on_card || 'N/A'));
+          
+        } catch (err) {
+          console.error('API test error:', err);
+          setError(`API test failed: ${err.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      // Clear token
+      const handleClearToken = () => {
+        setToken(null);
+        localStorage.removeItem('ramp_access_token');
+      };
+      
+      return (
+        <div style={{
+          maxWidth: '900px',
+          margin: '40px auto',
+          padding: '40px',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          backgroundColor: '#ffffff',
+          borderRadius: '16px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <h1 style={{ 
+              color: '#1a1a1a', 
+              marginBottom: '10px',
+              fontSize: '36px',
+              fontWeight: '700'
+            }}>
+              Ramp API Connector
+            </h1>
+            <p style={{ 
+              color: '#666', 
+              fontSize: '18px',
+              fontWeight: '400'
+            }}>
+              Simple Client Credentials Flow
+            </p>
+          </div>
+          
+          {/* Info notice */}
+          <div style={{
+            padding: '20px',
+            backgroundColor: '#d1ecf1',
+            border: '2px solid #17a2b8',
+            borderRadius: '8px',
+            marginBottom: '25px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+              <span style={{ fontSize: '24px', marginRight: '10px' }}>ℹ️</span>
+              <div>
+                <strong style={{ fontSize: '16px' }}>Client Credentials Flow:</strong>
+                <p style={{ marginTop: '10px', marginBottom: '0', lineHeight: '1.6' }}>
+                  This uses server-to-server authentication (no user login required). 
+                  The token is generated using your company's Client ID and Client Secret 
+                  stored securely in Vercel environment variables. This is perfect for 
+                  automation, dashboards, and backend integrations.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Error display */}
+          {error && (
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#f8d7da',
+              border: '2px solid #dc3545',
+              borderRadius: '8px',
+              marginBottom: '25px',
+              color: '#721c24'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '24px', marginRight: '10px' }}>❌</span>
+                <div>
+                  <strong>Error:</strong>
+                  <div style={{ marginTop: '5px' }}>{error}</div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Loading state */}
+          {loading && (
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#d1ecf1',
+              border: '2px solid #17a2b8',
+              borderRadius: '8px',
+              marginBottom: '25px',
+              color: '#0c5460',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '16px', fontWeight: '500' }}>⏳ Loading...</div>
+            </div>
+          )}
+          
+          {/* Main action area */}
+          {token ? (
+            <div>
+              <div style={{
+                padding: '25px',
+                backgroundColor: '#d4edda',
+                border: '2px solid #28a745',
+                borderRadius: '8px',
+                marginBottom: '25px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
+                  <span style={{ fontSize: '24px', marginRight: '10px' }}>✅</span>
+                  <strong style={{ color: '#155724', fontSize: '18px' }}>Access Token Retrieved</strong>
+                </div>
+                <div style={{
+                  marginTop: '15px',
+                  padding: '15px',
+                  backgroundColor: '#fff',
+                  borderRadius: '6px',
+                  border: '1px solid #c3e6cb',
+                  fontFamily: '"Courier New", monospace',
+                  fontSize: '13px',
+                  wordBreak: 'break-all',
+                  color: '#333',
+                  maxHeight: '150px',
+                  overflowY: 'auto'
+                }}>
+                  {token}
+                </div>
+                <p style={{ 
+                  marginTop: '15px', 
+                  marginBottom: '0',
+                  fontSize: '14px', 
+                  color: '#155724' 
+                }}>
+                  <strong>Token Type:</strong> Bearer | 
+                  <strong> Expires:</strong> 10 days from issuance
+                </p>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={testToken}
+                  disabled={loading}
+                  style={{
+                    flex: '1',
+                    minWidth: '200px',
+                    padding: '16px 28px',
+                    backgroundColor: loading ? '#6c757d' : '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 8px rgba(0,123,255,0.2)'
+                  }}
+                  onMouseOver={(e) => !loading && (e.target.style.backgroundColor = '#0056b3')}
+                  onMouseOut={(e) => !loading && (e.target.style.backgroundColor = '#007bff')}
+                >
+                  🧪 Test Token with API Call
+                </button>
+                
+                <button
+                  onClick={handleClearToken}
+                  disabled={loading}
+                  style={{
+                    flex: '1',
+                    minWidth: '200px',
+                    padding: '16px 28px',
+                    backgroundColor: loading ? '#6c757d' : '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 8px rgba(220,53,69,0.2)'
+                  }}
+                  onMouseOver={(e) => !loading && (e.target.style.backgroundColor = '#c82333')}
+                  onMouseOut={(e) => !loading && (e.target.style.backgroundColor = '#dc3545')}
+                >
+                  🗑️ Clear Token
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleGetToken}
+              disabled={loading}
+              style={{
+                padding: '20px 40px',
+                backgroundColor: loading ? '#6c757d' : '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontSize: '20px',
+                fontWeight: '700',
+                width: '100%',
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 12px rgba(40,167,69,0.3)'
+              }}
+              onMouseOver={(e) => !loading && (e.target.style.backgroundColor = '#218838')}
+              onMouseOut={(e) => !loading && (e.target.style.backgroundColor = '#28a745')}
+            >
+              🔐 Get Access Token
+            </button>
+          )}
+          
+          {/* Documentation */}
+          <div style={{
+            marginTop: '40px',
+            padding: '25px',
+            backgroundColor: '#f8f9fa',
+            border: '2px solid #dee2e6',
+            borderRadius: '8px'
+          }}>
+            <h3 style={{ marginTop: 0, color: '#343a40', fontSize: '20px' }}>
+              📖 How it works:
+            </h3>
+            <ol style={{ color: '#495057', lineHeight: '1.8' }}>
+              <li><strong>Click "Get Access Token"</strong></li>
+              <li><strong>Backend API</strong> requests token using Client Credentials grant</li>
+              <li><strong>Ramp API</strong> validates credentials and returns token</li>
+              <li><strong>Token displayed</strong> and saved in localStorage</li>
+              <li><strong>Test it</strong> with a real API call to /business endpoint</li>
+            </ol>
+            
+            <div style={{
+              marginTop: '20px',
+              padding: '15px',
+              backgroundColor: '#d4edda',
+              borderRadius: '6px',
+              border: '1px solid #c3e6cb'
+            }}>
+              <strong style={{ color: '#155724' }}>✅ Production Ready:</strong>
+              <p style={{ marginTop: '10px', marginBottom: 0, color: '#155724', fontSize: '14px' }}>
+                All secrets are stored securely in Vercel environment variables. 
+                Your Client ID and Client Secret never touch the browser. This is 
+                perfect for dashboards, automation, and server-to-server integrations.
+              </p>
+            </div>
+          </div>
+          
+          {/* Footer */}
+          <div style={{ 
+            marginTop: '30px', 
+            textAlign: 'center', 
+            color: '#6c757d',
+            fontSize: '14px'
+          }}>
+            <p style={{ marginBottom: '5px' }}>
+              Built with React 18 | Ramp API v1 | Client Credentials Flow
+            </p>
+            <p style={{ margin: 0 }}>
+              <a 
+                href="https://docs.ramp.com/developer-api/v1/introduction" 
+                target="_blank" 
+                rel="noopener"
+                style={{ color: '#007bff', textDecoration: 'none' }}
+              >
+                View Ramp API Documentation →
+              </a>
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Render the app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<RampConnector />);
+  </script>
+</body>
+</html>
