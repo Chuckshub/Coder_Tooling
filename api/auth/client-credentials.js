@@ -19,18 +19,19 @@ export default async function handler(req, res) {
 
   try {
     // Request token using Client Credentials grant
-    // Using the customer token endpoint (matches Postman setup)
+    // Using Basic Auth (matching Postman setup)
+    const basicAuth = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
+    
     const tokenResponse = await fetch('https://api.ramp.com/v1/public/customer/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
+        'Authorization': `Basic ${basicAuth}`,
       },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        scope: 'transactions:read cards:read users:read business:read', // Add scopes you need
+        scope: 'transactions:read cards:read users:read business:read',
       }),
     });
 
